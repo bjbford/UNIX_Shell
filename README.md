@@ -1,2 +1,9 @@
-# UNIX_Shell
-CprE 308: Project 1, Build your own UNIX Shell
+# Custom UNIX Shell
+
+### To compile sourcecode:
+- `cd` into `UNIX_Shell` directory
+- Run `make`
+
+### To remove compiled sourcecode:
+- `cd` into `UNIX_Shell` directory
+- Run `make clean`

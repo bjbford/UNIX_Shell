@@ -21,6 +21,9 @@ int main(int argc, char **argv) {
         char *input = NULL;
         size_t size = 0;
         ssize_t chars;
+        int num_args = 0;
+        int max_args = 64;
+        char *arg_vector[max_args];
         // pid_t pid;
         // int status;
 
@@ -33,9 +36,26 @@ int main(int argc, char **argv) {
         }
         // Change '\n' at end of input to null terminator
         input[strlen(input) - 1] = '\0';
+
+        // Get first argument delimited by space
+        char *argument = strtok(input, " ");	
+        // Create array of user arguments from input string delimited by space
+        while((argument != NULL) && (num_args < max_args)) {
+            arg_vector[num_args++] = argument;
+            argument = strtok(NULL, " ");
+        }
+        // Catch max arg warning and notify user.
+        if(num_args >= max_args) {
+            printf("Warning: You reached the maximum allowable number of arguments: %d\n", max_args);
+        }
+	/*int i;
+        for(i=0;i<num_args;i++) {
+            printf("Arg %d is \"%s\"\n", i, arg_vector[i]);
+        }
+        printf("Number of args: %d\n", num_args);
+*/
         // Execute user command and print result
-        // TODO: delimit input by whitespace and make a vector of args
-        execute_cmd(input);
+        execute_cmd(arg_vector, num_args);
         // free buffer allocated for input
         free(input);
     }

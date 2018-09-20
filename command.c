@@ -91,6 +91,7 @@ int builtin_cmd(char **cmd, int num_args) {
         // Not a built-in command!
         return 0;
     }
+    // Print errno to user.
     if(result == -1) {
         perror(NULL);
     }
@@ -110,20 +111,57 @@ int builtin_cmd(char **cmd, int num_args) {
 void execute_shell_cmd(char **cmd, int num_args) {
     char *last_arg = cmd[num_args-1];
     int result = 0;
+    // Create a child process
+    pid_t pid = fork();
+    // Catch fork() error
+    if(pid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
     // Check for ampersand, indicating to run in background
     if(strcmp(last_arg, "&") == 0) {
+        // Remove last arg, ensure it ends with NULL pointer
+        cmd[num_args - 1] = (char *) NULL;
         // Run process in background
-        printf("Last arg was \"%s\"\n", last_arg);
-        result = execvp(cmd[0], cmd);
+        if (pid == 0){
+            // Child process: Print pid to user
+            printf("[%d] %s\n", getpid(), cmd[0]);
+            result = execvp(cmd[0], cmd);
+        }
     }
     else {
+        // Ensure cmd ends with NULL pointer
+        cmd[num_args] = (char *) NULL;
         // Run process in foreground
-        result = execvp(cmd[0], cmd);
+        if(pid) {
+            // Parent process
+            int status;
+            pid_t wpid = waitpid(pid, &status, 0);
+            // Catch waitpid() error
+            if(wpid == -1) {
+                perror("waitpid");
+                exit(EXIT_FAILURE);
+            }
+            // Obtain status info from child's processes
+            if(WIFSIGNALED(status)){
+                printf("[%d] %s Killed (%d)\n", pid, cmd[0], WTERMSIG(status));
+            }
+            else if(WIFEXITED(status)) {
+                printf("[%d] %s Exit %d\n", pid, cmd[0], WEXITSTATUS(status));
+            }
+        }
+        else {
+            // Child process: Print pid to user
+            printf("[%d] %s\n", getpid(), cmd[0]);
+            result = execvp(cmd[0], cmd);
+        }
     }
     // Notify the user, requested command is not found and cannot be run.
     // Requirement #5.
     if(result == -1) {
-        printf("Requested command \"%s\" was not found and cannot be run.\n", cmd[0]);
+        char *error_string = strerror(errno);
+        printf("Cannot execute \"%s\": %s\n", cmd[0], error_string);
+        exit(EXIT_FAILURE);
     }
 }
 

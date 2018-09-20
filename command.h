@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sys/wait.h>
 
 /**
  * Check for built-in commands that are not to be treated as programs to be launched. 

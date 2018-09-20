@@ -24,8 +24,8 @@ int main(int argc, char **argv) {
         int num_args = 0;
         int max_args = 64;
         char *arg_vector[max_args];
-        // pid_t pid;
-        // int status;
+        pid_t pid;
+        int status;
 
         // Print user prompt
         printf("%s", user_prompt);
@@ -48,14 +48,19 @@ int main(int argc, char **argv) {
         if(num_args >= max_args) {
             printf("Warning: You reached the maximum allowable number of arguments: %d\n", max_args);
         }
-	/*int i;
-        for(i=0;i<num_args;i++) {
-            printf("Arg %d is \"%s\"\n", i, arg_vector[i]);
-        }
-        printf("Number of args: %d\n", num_args);
-*/
         // Execute user command and print result
         execute_cmd(arg_vector, num_args);
+        // Print the exit status of a background child process 
+        pid = waitpid(-1, &status, WNOHANG);
+        if (pid == 0){
+            // Obtain status info from child's processes
+            if(WIFSIGNALED(status)){
+                printf("[%d] Killed (%d)\n", getpid(), WTERMSIG(status));
+            }
+            else if(WIFEXITED(status)) {
+                printf("[%d] Exit %d\n", getpid(), WEXITSTATUS(status));
+            }
+        }
         // free buffer allocated for input
         free(input);
     }

@@ -7,7 +7,7 @@
  *      0 : cmd is not a built-in command
  *      1 : cmd is a build-in command
  */
-int builtin_cmd(char **cmd, int num_args) {
+int builtin_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs) {
     int result = 0;
     if(strcmp(cmd[0], "exit") == 0) {
         // exit the shell
@@ -87,6 +87,14 @@ int builtin_cmd(char **cmd, int num_args) {
             printf("Too many arguments for \"get\" command. Format should be \"get <var>\".\n");
         }
     }
+    else if(strcmp(cmd[0], "jobs") == 0) {
+        // Jobs command
+        int i;
+        printf("MADE IT HERE... num_jobs: %d\n", num_jobs);
+        for(i = 0;i<num_jobs;i++) {
+            printf("PID: [%d] Command: \"%s\" running.\n", joblist[i].pid, joblist[i].name);
+        }
+    }
     else {
         // Not a built-in command!
         return 0;
@@ -108,39 +116,52 @@ int builtin_cmd(char **cmd, int num_args) {
  * Remove the & when passing the parameters to exec. 
  * Requirement #9.
  */
-void execute_shell_cmd(char **cmd, int num_args) {
-    char *last_arg = cmd[num_args-1];
+void execute_shell_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs) {
     int result = 0;
-    // Create a child process
-    pid_t pid = fork();
-    // Catch fork() error
-    if(pid == -1) {
-        perror("fork");
-        exit(EXIT_FAILURE);
-    }
     // Check for ampersand, indicating to run in background
-    if(strcmp(last_arg, "&") == 0) {
-        // Remove last arg, ensure it ends with NULL pointer
-        cmd[num_args - 1] = (char *) NULL;
-        // Run process in background
-        if (pid == 0){
-            // Child process: Print pid to user
-            printf("[%d] %s\n", getpid(), cmd[0]);
+    if(strcmp(cmd[num_args-1], "&") == 0) {
+        // Add background process to joblist
+        strcpy(joblist[num_jobs].name, cmd[0]);
+        joblist[num_jobs].pid = fork();
+
+        if(joblist[num_jobs].pid == 0) {
+            // Child process
+            // Replace '&' with NULL pointer
+            cmd[num_args - 1] = (char *) NULL;
+            // Remove last arg, ensure it ends with NULL pointer
+            cmd[num_args] = (char *) NULL;
+            // Execute command
             result = execvp(cmd[0], cmd);
+        }
+        else if(joblist[num_jobs].pid > 0){
+            //Parent process
+            printf("[%d] %s\n", joblist[num_jobs].pid, joblist[num_jobs].name);
+            // Iterate 
+            num_jobs++;
+        }
+        else {
+            // Catch fork() error
+            perror("fork");
+            exit(EXIT_FAILURE);
         }
     }
     else {
-        // Ensure cmd ends with NULL pointer
-        cmd[num_args] = (char *) NULL;
-        // Run process in foreground
-        if(pid) {
+        // Foreground process
+        int pid = fork();
+        if(pid == 0) {
+            // Child process
+            printf("[%d] %s\n", getpid(), cmd[0]);
+            // Ensure cmd ends with NULL pointer
+            cmd[num_args] = (char *) NULL;
+            // Execute command
+            result = execvp(cmd[0], cmd);
+        }
+        else if (pid > 0){
             // Parent process
             int status;
-            pid_t wpid = waitpid(pid, &status, 0);
-            // Catch waitpid() error
-            if(wpid == -1) {
-                perror("waitpid");
-                exit(EXIT_FAILURE);
+            while(waitpid(pid, &status, WNOHANG) == 0)
+            {
+                // Waiting for the process to complete since foreground
             }
             // Obtain status info from child's processes
             if(WIFSIGNALED(status)){
@@ -151,9 +172,9 @@ void execute_shell_cmd(char **cmd, int num_args) {
             }
         }
         else {
-            // Child process: Print pid to user
-            printf("[%d] %s\n", getpid(), cmd[0]);
-            result = execvp(cmd[0], cmd);
+            // Catch fork() error
+            perror("fork");
+            exit(EXIT_FAILURE);
         }
     }
     // Notify the user, requested command is not found and cannot be run.
@@ -169,8 +190,8 @@ void execute_shell_cmd(char **cmd, int num_args) {
  * Execute a command. First check if it is a built-in command.
  * If not, attempt to execute a shell command.
  */
-void execute_cmd(char **cmd, int num_args) {
-    if(!builtin_cmd(cmd, num_args)){
-        execute_shell_cmd(cmd, num_args);
+void execute_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs) {
+    if(!builtin_cmd(cmd, num_args, joblist, num_jobs)){
+        execute_shell_cmd(cmd, num_args, joblist, num_jobs);
     }
 }

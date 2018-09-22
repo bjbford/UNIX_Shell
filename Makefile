@@ -1,3 +1,7 @@
+# Enter 'make' to build files
+# Enter 'make clean' to remove build files
+# Run './shell' after build for program
+
 TARGET = shell
 LIBS = -lm
 CC = gcc

@@ -36,12 +36,18 @@ int builtin_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs);
  * Remove the & when passing the parameters to exec. 
  * Requirement #9.
  */
-void execute_shell_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs);
+void execute_shell_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs, char *file_name, int redirect);
 
 /**
  * Execute a command. First check if it is a built-in command.
  * If not, attempt to execute a shell command.
  */
-void execute_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs);
+void execute_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs, char *file_name, int redirect);
+
+/**
+ * Redirect output from a command to specifed file_name. After completion
+ * of command, output will redirect to terminal.
+ */
+void redirect_output(char *file_name);
 
 #endif 

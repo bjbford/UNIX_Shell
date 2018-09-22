@@ -90,9 +90,8 @@ int builtin_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs) {
     else if(strcmp(cmd[0], "jobs") == 0) {
         // Jobs command
         int i;
-        printf("MADE IT HERE... num_jobs: %d\n", num_jobs);
-        for(i = 0;i<num_jobs;i++) {
-            printf("PID: [%d] Command: \"%s\" running.\n", joblist[i].pid, joblist[i].name);
+        for(i = 0;i<=num_jobs;i++) {
+            printf("[%d] Running \"%s\"\n", joblist[i].pid, joblist[i].name);
         }
     }
     else {
@@ -116,7 +115,7 @@ int builtin_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs) {
  * Remove the & when passing the parameters to exec. 
  * Requirement #9.
  */
-void execute_shell_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs) {
+void execute_shell_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs, char *file_name, int redirect) {
     int result = 0;
     // Check for ampersand, indicating to run in background
     if(strcmp(cmd[num_args-1], "&") == 0) {
@@ -136,19 +135,23 @@ void execute_shell_cmd(char **cmd, int num_args, struct job *joblist, int num_jo
         else if(joblist[num_jobs].pid > 0){
             //Parent process
             printf("[%d] %s\n", joblist[num_jobs].pid, joblist[num_jobs].name);
-            // Iterate 
-            num_jobs++;
         }
         else {
             // Catch fork() error
             perror("fork");
             exit(EXIT_FAILURE);
         }
+        // Iterate 
+        num_jobs++;
     }
     else {
         // Foreground process
         int pid = fork();
         if(pid == 0) {
+            // Redirect output to file_name
+            if(redirect) {
+                redirect_output(file_name);
+            }   
             // Child process
             printf("[%d] %s\n", getpid(), cmd[0]);
             // Ensure cmd ends with NULL pointer
@@ -190,8 +193,25 @@ void execute_shell_cmd(char **cmd, int num_args, struct job *joblist, int num_jo
  * Execute a command. First check if it is a built-in command.
  * If not, attempt to execute a shell command.
  */
-void execute_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs) {
+void execute_cmd(char **cmd, int num_args, struct job *joblist, int num_jobs, char *file_name, int redirect) {
     if(!builtin_cmd(cmd, num_args, joblist, num_jobs)){
-        execute_shell_cmd(cmd, num_args, joblist, num_jobs);
+        execute_shell_cmd(cmd, num_args, joblist, num_jobs, file_name, redirect);
     }
+}
+
+/**
+ * Redirect output from a command to specifed file_name. After completion
+ * of command, output will redirect to terminal.
+ */
+void redirect_output(char *file_name) {
+    // Create file if not there, otherwise truncate, give 644 permissions.
+    int fd = open(file_name, O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    if(fd < 0) {
+        fprintf(stderr, "open error: %d [%s]\n", errno, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    // Redirect stdout to file
+    dup2(fd, 1);
+    // close file
+    close(fd);
 }
